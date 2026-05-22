@@ -11,16 +11,7 @@ st.set_page_config(
 )
 
 # Custom CSS to inject a modern app feel with rounded corners
-st.markdown("""
-    <style>
-    .stButton>button {
-        border-radius: 12px;
-    }
-    .stTextInput>div>div>input {
-        border-radius: 10px;
-    }
-    </style>
-""", unsafe_html=True)
+
 
 st.title("💰 Personal Finance Tracker")
 
