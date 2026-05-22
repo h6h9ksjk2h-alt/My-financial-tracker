@@ -10,9 +10,6 @@ st.set_page_config(
     layout="centered"
 )
 
-# Custom CSS to inject a modern app feel with rounded corners
-
-
 st.title("💰 Personal Finance Tracker")
 
 # 🗄️ Initialize data storage (Session State)
@@ -33,10 +30,8 @@ theme_choice = st.sidebar.selectbox(
 # Define color palettes based on selection
 if theme_choice == "Midnight Sleek":
     chart_colors = ["#00F0FF", "#FF007A", "#9D00FF", "#FFB800", "#00FF66", "#FF4D00"]
-    metric_color = "🎒"
 else:
     chart_colors = ["#064E3B", "#059669", "#34D399", "#A7F3D0", "#F59E0B", "#D97706"]
-    metric_color = "💸"
 
 edit_mode = st.sidebar.checkbox("📝 Enable Edit Mode")
 
@@ -138,7 +133,7 @@ if not st.session_state.expenses.empty:
                     df_chart, 
                     values="Amount", 
                     names="Category", 
-                    hole=0.4,  # Turns the pie chart into a modern donut chart
+                    hole=0.4,  
                     color_discrete_sequence=chart_colors
                 )
                 fig.update_layout(
@@ -147,25 +142,26 @@ if not st.session_state.expenses.empty:
                     showlegend=True,
                     legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                # 🛠️ Fixed: Unique key added for each tab's chart
+                st.plotly_chart(fig, use_container_width=True, key=f"chart_{period_name}")
                 
                 st.dataframe(filtered_df[["Date", "Category", "Amount", "Description"]], use_container_width=True)
 
     with tab1:
         df_week = df[df['Date_Parsed'] >= start_of_week]
-        render_summary_tab(df_week, "Last 7 Days")
+        render_summary_tab(df_week, "week")
 
     with tab2:
         df_month = df[(df['Date_Parsed'].dt.year == current_year) & (df['Date_Parsed'].dt.month == current_month)]
-        render_summary_tab(df_month, "This Month")
+        render_summary_tab(df_month, "month")
 
     with tab3:
         df_quarter = df[(df['Date_Parsed'].dt.year == current_year) & (((df['Date_Parsed'].dt.month - 1) // 3 + 1) == current_quarter)]
-        render_summary_tab(df_quarter, "This Quarter")
+        render_summary_tab(df_quarter, "quarter")
 
     with tab4:
         df_year = df[df['Date_Parsed'].dt.year == current_year]
-        render_summary_tab(df_year, "This Year")
+        render_summary_tab(df_year, "year")
 
 else:
     st.info("No expenses added yet. Use the form above to start tracking!")
