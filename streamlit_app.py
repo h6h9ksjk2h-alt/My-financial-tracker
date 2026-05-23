@@ -344,11 +344,12 @@ if not st.session_state.expenses.empty:
                 color_discrete_sequence=chart_colors,
                 labels={group_col: lbl, "Amount": "ยอดรวม (บาท)"}
             )
+            # 🛠️ แก้ไขจุดนี้: เปลี่ยนจาก "center shadow" เป็น "center" เพื่อความถูกต้องตามมาตรฐาน Plotly
             fig_bar.update_layout(
                 margin=dict(l=10, r=10, t=20, b=10),
                 height=300,
                 barmode='stack',
-                legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center shadow", x=0.5)
+                legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5)
             )
             st.plotly_chart(fig_bar, use_container_width=True, key=f"trend_bar_{user_filter}")
     else:
