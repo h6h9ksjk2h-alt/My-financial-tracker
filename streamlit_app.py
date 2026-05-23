@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime, timedelta
+import os
 
 # 📱 Page configuration for a clean mobile look
 st.set_page_config(
@@ -12,8 +13,17 @@ st.set_page_config(
 
 st.title("💰 Personal Finance Tracker")
 
-# 🗄️ Initialize data storage (Session State)
-if 'expenses' not in st.session_state:
+# 📂 Define the local storage file name
+CSV_FILE = "expenses.csv"
+
+# 🗄️ Permanent Storage Logic: Load data from CSV or initialize a new one
+if os.path.exists(CSV_FILE):
+    # Load existing data and ensure columns are read correctly
+    st.session_state.expenses = pd.read_csv(CSV_FILE)
+    # Convert Amount to float just in case
+    st.session_state.expenses["Amount"] = st.session_state.expenses["Amount"].astype(float)
+else:
+    # If no file exists, start with an empty table
     st.session_state.expenses = pd.DataFrame(columns=["Date", "Category", "Amount", "Description"])
 
 categories = ["Food", "Gasoline", "Shopping", "Hospital", "Grocery", "For Child"]
@@ -57,11 +67,11 @@ if edit_mode:
         )
         
         old_row = st.session_state.expenses.iloc[row_to_edit]
-        default_date = datetime.strptime(old_row['Date'], "%Y-%m-%d")
+        default_date = datetime.strptime(str(old_row['Date']), "%Y-%m-%d")
         if old_row['Category'] in categories:
             default_cat_index = categories.index(old_row['Category'])
         default_amount = float(old_row['Amount'])
-        default_desc = old_row['Description']
+        default_desc = str(old_row['Description'])
         st.sidebar.info(f"Loaded Row {row_to_edit}. Modify details in the main form.")
 
 # ➕ Main Form Section wrapped in a modern card container
@@ -89,7 +99,6 @@ if submit_button:
             st.session_state.expenses.at[row_to_edit, "Amount"] = amount
             st.session_state.expenses.at[row_to_edit, "Description"] = description
             st.success(f"Updated Row {row_to_edit} successfully!")
-            st.rerun()
         else:
             new_row = pd.DataFrame([{
                 "Date": date.strftime("%Y-%m-%d"), 
@@ -99,6 +108,10 @@ if submit_button:
             }])
             st.session_state.expenses = pd.concat([st.session_state.expenses, new_row], ignore_index=True)
             st.success(f"Added {category}: ฿{amount:.2f}!")
+        
+        # 💾 Save updated data to the CSV file permanently
+        st.session_state.expenses.to_csv(CSV_FILE, index=False)
+        st.rerun()
     else:
         st.warning("Please enter an amount greater than 0.")
 
@@ -153,17 +166,15 @@ if not st.session_state.expenses.empty:
     st.subheader("🧱 Spending Trends & Comparisons")
     
     with st.container(border=True):
-        # Time interval selector for the bar chart comparison
         time_view = st.radio(
             "Compare spending by:",
             ["Weekly", "Monthly", "Yearly"],
             horizontal=True
         )
         
-        # Add tracking columns for groups
         df['Year'] = df['Date_Parsed'].dt.strftime('%Y')
         df['Month'] = df['Date_Parsed'].dt.strftime('%Y-%m')
-        df['Week'] = df['Date_Parsed'].dt.apply(lambda x: (x - timedelta(days=x.weekday())).strftime('%Y-%m-%d'))
+        df['Week'] = df['Date_Parsed'].dt.to_period('W').dt.start_time.dt.strftime('%Y-%m-%d')
 
         if time_view == "Weekly":
             group_col = 'Week'
@@ -175,10 +186,8 @@ if not st.session_state.expenses.empty:
             group_col = 'Year'
             lbl = "Year"
             
-        # Group data for the chart
         df_trend = df.groupby([group_col, 'Category'], as_index=False)['Amount'].sum()
         
-        # Build the modern Stacked Bar Chart
         fig_bar = px.bar(
             df_trend,
             x=group_col,
