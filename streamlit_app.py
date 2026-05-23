@@ -15,8 +15,9 @@ st.title("💝 บันทึกการเงินของเรา")
 
 # 📂 กำหนดชื่อไฟล์สำหรับบันทึกข้อมูล
 CSV_FILE = "expenses.csv"
+BUDGET_FILE = "budget.txt"  # 🆕 กำหนดชื่อไฟล์สำหรับเก็บงบประมาณ[span_1](start_span)[span_1](end_span)
 
-# 🗄️ โครงสร้างหน่วยความจำระบบ (session_state) พร้อมล็อกประเภทข้อมูลข้อความ (String) สำหรับ Note
+# 🗄️ โครงสร้างหน่วยความจำระบบ (session_state) ของข้อมูลค่าใช้จ่าย
 if os.path.exists(CSV_FILE):
     st.session_state.expenses = pd.read_csv(CSV_FILE)
     st.session_state.expenses["Amount"] = st.session_state.expenses["Amount"].astype(float)
@@ -29,9 +30,20 @@ else:
     st.session_state.expenses = pd.DataFrame(columns=["Date", "Category", "Amount", "Description", "User", "Note"])
     st.session_state.expenses["Note"] = st.session_state.expenses["Note"].astype(str)
 
-# 🧠 ระบบจำค่างบประมาณรายเดือนเริ่มต้น (20,000 บาท)
+# 🧠 ระบบจำค่างบประมาณรายเดือน (ดึงค่าจากไฟล์เพื่อไม่ให้ถูกรีเซ็ตตอน Refresh)
 if "monthly_budget" not in st.session_state:
-    st.session_state.monthly_budget = 20000.0
+    if os.path.exists(BUDGET_FILE):
+        # 📥 ถ้ามีไฟล์อยู่แล้ว ให้ดึงค่าจากไฟล์มาใช้[span_2](start_span)[span_2](end_span)
+        with open(BUDGET_FILE, "r", encoding="utf-8") as f:
+            try:
+                st.session_state.monthly_budget = float(f.read().strip())
+            except ValueError:
+                st.session_state.monthly_budget = 20000.0
+    else:
+        # 🆕 ถ้ายังไม่มีไฟล์ ให้ใช้ค่าเริ่มต้น 20,000 และสร้างไฟล์ไว้[span_3](start_span)[span_3](end_span)
+        st.session_state.monthly_budget = 20000.0
+        with open(BUDGET_FILE, "w", encoding="utf-8") as f:
+            f.write(str(st.session_state.monthly_budget))
 
 # 🏷️ หมวดหมู่และรายชื่อผู้ใช้งาน
 categories = [
@@ -51,12 +63,20 @@ chart_colors = ["#FFB7B2", "#FFDAC1", "#E2F0CB", "#B5EAD7", "#C7CEEA", "#FFC6FF"
 # 🛠️ เมนูด้านข้าง (Sidebar)
 st.sidebar.header("⚙️ ตั้งค่าแอป")
 
-st.session_state.monthly_budget = st.sidebar.number_input(
+# รับค่าจากผู้ใช้ผ่าน Input
+new_budget = st.sidebar.number_input(
     "🎯 งบประมาณรวมประจำเดือน (บาท)",
     min_value=0.0,
     value=st.session_state.monthly_budget,
     step=500.0
 )
+
+# 💾 ถ้าผู้ใช้เปลี่ยนค่าในแอป ให้บันทึกลงไฟล์ทันที[span_4](start_span)[span_4](end_span)
+if new_budget != st.session_state.monthly_budget:
+    st.session_state.monthly_budget = new_budget
+    with open(BUDGET_FILE, "w", encoding="utf-8") as f:
+        f.write(str(new_budget))
+    st.rerun()
 
 edit_mode = st.sidebar.checkbox("📝 เปิดโหมดแก้ไขข้อมูล")
 
@@ -344,7 +364,6 @@ if not st.session_state.expenses.empty:
                 color_discrete_sequence=chart_colors,
                 labels={group_col: lbl, "Amount": "ยอดรวม (บาท)"}
             )
-            # 🛠️ แก้ไขจุดนี้: เปลี่ยนจาก "center shadow" เป็น "center" เพื่อความถูกต้องตามมาตรฐาน Plotly
             fig_bar.update_layout(
                 margin=dict(l=10, r=10, t=20, b=10),
                 height=300,
