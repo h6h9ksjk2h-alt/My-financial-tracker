@@ -16,7 +16,7 @@ st.title("💝 บันทึกการเงินของเรา")
 # 📂 กำหนดชื่อไฟล์สำหรับบันทึกข้อมูล
 CSV_FILE = "expenses.csv"
 BUDGET_FILE = "budget.txt"
-GOALS_FILE = "goals.csv"  # ไฟล์สำหรับเก็บเป้าหมายการออมเงิน
+GOALS_FILE = "goals.csv"
 
 # 🗄️ โครงสร้างหน่วยความจำระบบสำหรับเป้าหมายเงินออม
 if os.path.exists(GOALS_FILE):
@@ -24,7 +24,6 @@ if os.path.exists(GOALS_FILE):
     st.session_state.goals["Target_Amount"] = st.session_state.goals["Target_Amount"].astype(float)
     st.session_state.goals["Current_Savings"] = st.session_state.goals["Current_Savings"].astype(float)
 else:
-    # เริ่มต้นสร้างเป้าหมาย Default "การลงทุน 📈" เพื่อความปลอดภัยของระบบ
     st.session_state.goals = pd.DataFrame([
         {"Goal_Name": "การลงทุน 📈", "Target_Amount": 100000.0, "Current_Savings": 0.0}
     ])
@@ -73,7 +72,17 @@ categories = [
     "การออมเงิน 💰"
 ]
 users_list = ["Ado", "Paanpopy"]
-chart_colors = ["#FFB7B2", "#FFDAC1", "#E2F0CB", "#B5EAD7", "#C7CEEA", "#FFC6FF", "#BFFCC6"]
+
+# 🎨 ปรับกลุ่มสีใหม่ให้แตกต่างกันชัดเจน (High Contrast) บนจอมือถือ
+chart_colors = [
+    "#EF6C00", # อาหารและขนม 🍔 (ส้มเข้ม)
+    "#1565C0", # ค่าน้ำมันรถ 🚗 (น้ำเงิน)
+    "#6A1B9A", # ช้อปปิ้ง 🛍️ (ม่วง)
+    "#C62828", # โรงพยาบาล/ยา 🏥 (แดง)
+    "#00838F", # ของชำเข้าบ้าน 🛒 (ฟ้าคราม)
+    "#FBC02D", # เพื่อลูกรัก 👶 (เหลืองทอง)
+    "#2E7D32"  # การออมเงิน 💰 (เขียวเหนี่ยวทรัพย์)
+]
 
 # 🛠️ เมนูด้านข้าง (Sidebar)
 st.sidebar.header("⚙️ ตั้งค่าแอป")
@@ -232,11 +241,10 @@ with st.container(border=True):
     else:
         st.info("ยังไม่มีเป้าหมายออมเงินในระบบ สามารถเพิ่มเป้าหมายได้ที่เมนูด้านข้างเลยจ้า!")
 
-# 🐻🐰 ส่วนที่ 2: การ์ดสรุปยอดเงินสะสมทั้งหมดของทั้งคู่ (แก้ไข: เฉพาะจากการออม)
+# 🐻🐰 ส่วนที่ 2: การ์ดสรุปยอดเงินสะสมทั้งหมดของทั้งคู่ (เฉพาะจากการออม)
 if not st.session_state.expenses.empty:
     df_stats = st.session_state.expenses.copy()
     
-    # 🎯 ตรรกะใหม่: กรองข้อมูลแยกรายบุคคลเฉพาะที่เป็นหมวด "การออมเงิน 💰" เท่านั้น
     df_ado_savings = df_stats[(df_stats["User"] == "Ado") & (df_stats["Category"] == "การออมเงิน 💰")]
     df_paanpopy_savings = df_stats[(df_stats["User"] == "Paanpopy") & (df_stats["Category"] == "การออมเงิน 💰")]
     
@@ -267,7 +275,6 @@ with st.container(border=True):
         amount = st.number_input("จำนวนเงิน (บาท) 💵", min_value=0.0, step=1.0, value=default_amount)
         description = st.text_input("รายละเอียด/หมายเหตุ 📝", value=default_desc, placeholder="ซื้อของกินเข้าบ้าน / ออมหุ้น")
         
-        # กล่องเลือกเป้าหมายจะเปิดอัตโนมัติเมื่อเลือกหมวดการออมเงิน โดยมี Default เป็นการลงทุน
         goal_list = st.session_state.goals["Goal_Name"].tolist()
         if "การลงทุน 📈" not in goal_list:
             goal_list.insert(0, "การลงทุน 📈")
@@ -284,7 +291,6 @@ if submit_button:
     if amount > 0:
         goal_to_save = savings_goal if category == "การออมเงิน 💰" else ""
         
-        # ถ้าระบบตรวจไม่เจอเป้าหมาย Default ในตารางออมเงิน ให้สร้างขึ้นมารองรับความปลอดภัยทันที
         if category == "การออมเงิน 💰" and goal_to_save not in st.session_state.goals["Goal_Name"].values:
             auto_goal = pd.DataFrame([{"Goal_Name": goal_to_save, "Target_Amount": 100000.0, "Current_Savings": 0.0}])
             st.session_state.goals = pd.concat([st.session_state.goals, auto_goal], ignore_index=True)
@@ -434,13 +440,21 @@ if not st.session_state.expenses.empty:
                 lbl = "ปี"
                 
             df_trend = df_filtered.groupby([group_col, 'Category'], as_index=False)['Amount'].sum()
+            
+            # เรียงลำดับช่วงเวลาจากใหม่ไปเก่า (ปัจจุบันอยู่บนสุด)
+            df_trend = df_trend.sort_values(by=group_col, ascending=False)
+            
+            # 📊 ปรับปรุงโครงสร้างกราฟแท่งแนวนอน (Horizontal) และเพิ่มระยะขอบซ้าย (l=80) ให้มองเห็นเดือนชัดเจน
             fig_bar = px.bar(
-                df_trend, x=group_col, y="Amount", color="Category",
-                color_discrete_sequence=chart_colors, labels={group_col: lbl, "Amount": "ยอดรวม (บาท)"}
+                df_trend, x="Amount", y=group_col, color="Category",
+                color_discrete_sequence=chart_colors, 
+                orientation="h",
+                labels={group_col: lbl, "Amount": "ยอดรวม (บาท)"}
             )
             fig_bar.update_layout(
-                margin=dict(l=10, r=10, t=20, b=10), height=300, barmode='stack',
-                legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5)
+                margin=dict(l=80, r=10, t=20, b=10), height=350, barmode='stack',
+                yaxis={'categoryorder': 'array', 'categoryarray': df_trend[group_col].unique()},
+                legend=dict(orientation="h", yanchor="bottom", y=-0.4, xanchor="center", x=0.5)
             )
             st.plotly_chart(fig_bar, use_container_width=True, key=f"trend_bar_{user_filter}")
 else:
