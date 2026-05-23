@@ -18,12 +18,9 @@ CSV_FILE = "expenses.csv"
 
 # 🗄️ Permanent Storage Logic: Load data from CSV or initialize a new one
 if os.path.exists(CSV_FILE):
-    # Load existing data and ensure columns are read correctly
     st.session_state.expenses = pd.read_csv(CSV_FILE)
-    # Convert Amount to float just in case
     st.session_state.expenses["Amount"] = st.session_state.expenses["Amount"].astype(float)
 else:
-    # If no file exists, start with an empty table
     st.session_state.expenses = pd.DataFrame(columns=["Date", "Category", "Amount", "Description"])
 
 categories = ["Food", "Gasoline", "Shopping", "Hospital", "Grocery", "For Child"]
@@ -74,6 +71,25 @@ if edit_mode:
         default_desc = str(old_row['Description'])
         st.sidebar.info(f"Loaded Row {row_to_edit}. Modify details in the main form.")
 
+# 📥 Data Export Section inside the Sidebar
+st.sidebar.markdown("---")
+st.sidebar.subheader("📥 Export Data")
+
+if not st.session_state.expenses.empty:
+    # Convert the current dataframe into a standard CSV string format
+    csv_data = st.session_state.expenses.to_csv(index=False).encode('utf-8')
+    
+    # Render the native download button
+    st.sidebar.download_button(
+        label="📥 Download Expenses CSV",
+        data=csv_data,
+        file_name="my_personal_expenses.csv",
+        mime="text/csv",
+        use_container_width=True
+    )
+else:
+    st.sidebar.info("No data available to download yet.")
+
 # ➕ Main Form Section wrapped in a modern card container
 with st.container(border=True):
     if edit_mode:
@@ -109,7 +125,6 @@ if submit_button:
             st.session_state.expenses = pd.concat([st.session_state.expenses, new_row], ignore_index=True)
             st.success(f"Added {category}: ฿{amount:.2f}!")
         
-        # 💾 Save updated data to the CSV file permanently
         st.session_state.expenses.to_csv(CSV_FILE, index=False)
         st.rerun()
     else:
