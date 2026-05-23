@@ -16,14 +16,18 @@ st.title("💝 บันทึกการเงินของเรา")
 # 📂 กำหนดชื่อไฟล์สำหรับบันทึกข้อมูล
 CSV_FILE = "expenses.csv"
 
-# 🗄️ โหลดข้อมูลจากไฟล์ CSV ถ้าไม่มีให้สร้างตารางเปล่า
+# 🗄️ โครงสร้างหน่วยความจำระบบ (session_state)
 if os.path.exists(CSV_FILE):
     st.session_state.expenses = pd.read_csv(CSV_FILE)
     st.session_state.expenses["Amount"] = st.session_state.expenses["Amount"].astype(float)
 else:
     st.session_state.expenses = pd.DataFrame(columns=["Date", "Category", "Amount", "Description", "User"])
 
-# 🏷️ หมวดหมู่ที่เพิ่ม "การลงทุน 📈" ต่อท้ายเรียบร้อยแล้ว
+# 🧠 ระบบจำค่างบประมาณรายเดือนเริ่มต้น (20,000 บาท)
+if "monthly_budget" not in st.session_state:
+    st.session_state.monthly_budget = 20000.0
+
+# 🏷️ หมวดหมู่และรายชื่อผู้ใช้งาน
 categories = [
     "อาหารและขนม 🍔", 
     "ค่าน้ำมันรถ 🚗", 
@@ -35,11 +39,20 @@ categories = [
 ]
 users_list = ["Ado", "Paanpopy"]
 
-# 🎀 โทนสีพาสเทลสุดน่ารัก (เพิ่มสีที่ 7 รองรับหมวดหมู่ใหม่)
+# 🎀 โทนสีพาสเทลสุดน่ารัก
 chart_colors = ["#FFB7B2", "#FFDAC1", "#E2F0CB", "#B5EAD7", "#C7CEEA", "#FFC6FF", "#BFFCC6"]
 
 # 🛠️ เมนูด้านข้าง (Sidebar)
 st.sidebar.header("⚙️ ตั้งค่าแอป")
+
+# 💵 ช่องปรับเปลี่ยนงบประมาณประจำเดือนใน Sidebar ตามที่เลือกไว้
+st.session_state.monthly_budget = st.sidebar.number_input(
+    "🎯 งบประมาณรวมประจำเดือน (บาท)",
+    min_value=0.0,
+    value=st.session_state.monthly_budget,
+    step=500.0
+)
+
 edit_mode = st.sidebar.checkbox("📝 เปิดโหมดแก้ไขข้อมูล")
 
 # กำหนดค่าเริ่มต้นสำหรับฟอร์ม
@@ -50,7 +63,7 @@ default_desc = ""
 default_user_index = 0
 row_to_edit = None
 
-# 🔍 ระบบค้นหาข้อมูลสำหรับโหมดแก้ไข
+# 🔍 ระบบดึงข้อมูลสำหรับโหมดแก้ไข
 if edit_mode:
     if st.session_state.expenses.empty:
         st.sidebar.warning("⚠️ ยังไม่มีข้อมูลค่าใช้จ่าย ลองเพิ่มข้อมูลก่อนนะจ๊ะ!")
@@ -88,25 +101,67 @@ if not st.session_state.expenses.empty:
         use_container_width=True
     )
 
-# 🐻🐰 ส่วนที่ 1: การ์ดสรุปยอดเงินรวมของทั้งคู่
+# คำนวณเวลาปัจจุบัน
+today = datetime.now()
+current_year = today.year
+current_month = today.month
+start_of_week = today - timedelta(days=7)
+
+# 🎯 ส่วนที่ 1: หลอดความคืบหน้างบประมาณรายเดือน (Shared Budget Progress Bar)
+st.subheader(f"📊 งบประมาณประจำเดือน {current_month}/{current_year}")
+
+if not st.session_state.expenses.empty:
+    df_budget = st.session_state.expenses.copy()
+    df_budget['Date_Parsed'] = pd.to_datetime(df_budget['Date'])
+    
+    # กรองเฉพาะเดือนปัจจุบันมารวมกัน
+    df_this_month = df_budget[(df_budget['Date_Parsed'].dt.year == current_year) & (df_budget['Date_Parsed'].dt.month == current_month)]
+    total_spent_this_month = df_this_month["Amount"].sum()
+    budget_limit = st.session_state.monthly_budget
+
+    # คำนวณเปอร์เซ็นต์ (ไม่ให้เกิน 100% สำหรับแถบความคืบหน้า)
+    if budget_limit > 0:
+        progress_pct = min(total_spent_this_month / budget_limit, 1.0)
+        display_pct = (total_spent_this_month / budget_limit) * 100
+    else:
+        progress_pct = 0.0
+        display_pct = 0.0
+
+    # แสดงผลหลอด Progress Bar และข้อความเตือนหวานๆ
+    with st.container(border=True):
+        st.progress(progress_pct)
+        st.write(f"ใช้ไปแล้ว **฿{total_spent_this_month:,.2f}** จากงบรวม **฿{budget_limit:,.2f}** ({display_pct:.1f}%)")
+        
+        # แจ้งเตือนถ้างบใกล้หมด
+        if display_pct >= 90.0:
+            st.error("🚨 อุ๊ย! งบเดือนนี้ใช้ไปเกิน 90% แล้วนะจ๊ะ ชวนกันประหยัดหน่อยน้า 💕")
+        elif display_pct >= 70.0:
+            st.warning("⚠️ เริ่มใช้เงินเยอะแล้วนะจ๊ะ คอยดูกระเป๋าเงินกันดีๆ น้า 🐻🐰")
+        else:
+            st.success("🌸 เดือนนี้เราสองคนยังควบคุมงบได้ดีเยี่ยมเลยจ้า เก่งมาก! 🎉")
+else:
+    with st.container(border=True):
+        st.progress(0.0)
+        st.write(f"ใช้ไปแล้ว **฿0.00** จากงบรวม **฿{st.session_state.monthly_budget:,.2f}** (0.0%)")
+        st.success("🌸 เริ่มต้นเดือนใหม่ มาช่วยกันบันทึกออมเงินกันนะจ๊ะ!")
+
+# 🐻🐰 ส่วนที่ 2: การ์ดสรุปยอดเงินรวมทั้งหมดของทั้งคู่
 if not st.session_state.expenses.empty:
     df_stats = st.session_state.expenses.copy()
-    
     total_ado = df_stats[df_stats["User"] == "Ado"]["Amount"].sum()
     total_paanpopy = df_stats[df_stats["User"] == "Paanpopy"]["Amount"].sum()
     
-    st.subheader("💕 ยอดรวมของเราสองคน")
+    st.subheader("💕 ยอดสะสมทั้งหมดของเราสองคน")
     col1, col2 = st.columns(2)
     
     with col1:
         with st.container(border=True):
             st.metric(label="🐻 ยอดรวมของ Ado", value=f"฿{total_ado:,.2f}")
-            
     with col2:
         with st.container(border=True):
             st.metric(label="🐰 ยอดรวมของ Paanpopy", value=f"฿{total_paanpopy:,.2f}")
 
-# ➕ ส่วนที่ 2: ฟอร์มกรอกข้อมูลการใช้เงิน
+# ➕ ส่วนที่ 3: ฟอร์มกรอกข้อมูลการใช้เงิน
 with st.container(border=True):
     if edit_mode:
         st.subheader(f"✏️ แก้ไขข้อมูล (แถวที่ {row_to_edit})")
@@ -149,7 +204,7 @@ if submit_button:
     else:
         st.warning("กรุณากรอกจำนวนเงินที่มากกว่า 0 นะจ๊ะ")
 
-# 📊 ส่วนที่ 3: แดชบอร์ดแสดงกราฟและตารางข้อมูล
+# 📊 ส่วนที่ 4: แดชบอร์ดแสดงกราฟและตารางข้อมูล
 st.markdown("---")
 
 if not st.session_state.expenses.empty:
@@ -159,12 +214,6 @@ if not st.session_state.expenses.empty:
     if "User" not in df.columns:
         df["User"] = "Unknown"
     df["User"] = df["User"].fillna("Unknown")
-
-    today = datetime.now()
-    current_year = today.year
-    current_month = today.month
-    current_quarter = (today.month - 1) // 3 + 1
-    start_of_week = today - timedelta(days=7)
 
     # 🔍 ตัวกรองเลือกดูข้อมูลของแต่ละคน
     st.subheader("🔍 ตัวกรองแดชบอร์ด")
@@ -180,7 +229,7 @@ if not st.session_state.expenses.empty:
     else:
         df_filtered = df
 
-    # 📋 แท็บแบ่งช่วงเวลาภาษาไทย
+    # 📋 แท็บแบ่งช่วงเวลา
     st.subheader(f"📊 สรุปยอดตามช่วงเวลา")
     tab1, tab2, tab3, tab4 = st.tabs(["🗓️ สัปดาห์นี้", "📊 เดือนนี้", "📈 ไตรมาสนี้", "💰 ปีนี้"])
     
