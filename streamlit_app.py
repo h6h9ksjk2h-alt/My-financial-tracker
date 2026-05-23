@@ -16,15 +16,20 @@ st.title("💝 บันทึกการเงินของเรา")
 # 📂 กำหนดชื่อไฟล์สำหรับบันทึกข้อมูล
 CSV_FILE = "expenses.csv"
 
-# 🗄️ โครงสร้างหน่วยความจำระบบ (session_state) พร้อมรองรับคอลัมน์ Note ท้ายสุด
+# 🗄️ โครงสร้างหน่วยความจำระบบ (session_state) พร้อมล็อกประเภทข้อมูลข้อความ (String) สำหรับ Note
 if os.path.exists(CSV_FILE):
     st.session_state.expenses = pd.read_csv(CSV_FILE)
     st.session_state.expenses["Amount"] = st.session_state.expenses["Amount"].astype(float)
-    # ตรวจสอบเผื่อกรณีไฟล์เดิมยังไม่มีคอลัมน์ Note
+    
+    # 🛠️ แก้ไขจุดนี้: บังคับให้คอลัมน์ Note เป็นข้อความ (String) เสมอเมื่อโหลดไฟล์เดิม ป้องกัน Error
     if "Note" not in st.session_state.expenses.columns:
         st.session_state.expenses["Note"] = ""
+    else:
+        st.session_state.expenses["Note"] = st.session_state.expenses["Note"].astype(str)
 else:
+    # 🛠️ แก้ไขจุดนี้: สร้างตารางเริ่มต้นใหม่ พร้อมคอลัมน์ Note ที่รองรับข้อมูลข้อความตั้งแต่แรก
     st.session_state.expenses = pd.DataFrame(columns=["Date", "Category", "Amount", "Description", "User", "Note"])
+    st.session_state.expenses["Note"] = st.session_state.expenses["Note"].astype(str)
 
 # 🧠 ระบบจำค่างบประมาณรายเดือนเริ่มต้น (20,000 บาท)
 if "monthly_budget" not in st.session_state:
@@ -90,7 +95,7 @@ if edit_mode:
         if "User" in old_row and old_row['User'] in users_list:
             default_user_index = users_list.index(old_row['User'])
         if "Note" in old_row:
-            default_note = str(old_row['Note']) if pd.notna(old_row['Note']) else ""
+            default_note = str(old_row['Note']) if pd.notna(old_row['Note']) and str(old_row['Note']) != "nan" else ""
             
         st.sidebar.info(f"ดึงข้อมูลแถวที่ {row_to_edit} มาแล้ว แก้ไขในฟอร์มหลักได้เลย")
 
@@ -108,7 +113,7 @@ if not st.session_state.expenses.empty:
         use_container_width=True
     )
 
-# 🕒 คำนวณเวลาปัจจุบันและแก้จุด Error ไตรมาสเรียบร้อยแล้ว
+# 🕒 คำนวณเวลาปัจจุบัน
 today = datetime.now()
 current_year = today.year
 current_month = today.month
@@ -127,7 +132,7 @@ if not st.session_state.expenses.empty:
     total_spent_this_month = df_this_month["Amount"].sum()
     budget_limit = st.session_state.monthly_budget
 
-    # คำนวณเปอร์เซ็นต์ (ใช้ min ป้องกันหลอดพังเกิน 100%)
+    # คำนวณเปอร์เซ็นต์
     if budget_limit > 0:
         progress_pct = min(total_spent_this_month / budget_limit, 1.0)
         display_pct = (total_spent_this_month / budget_limit) * 100
@@ -135,7 +140,7 @@ if not st.session_state.expenses.empty:
         progress_pct = 0.0
         display_pct = 0.0
 
-    # แสดงผลหลอด Progress Bar และข้อความเตือนหวานๆ
+    # แสดงผลหลอด Progress Bar
     with st.container(border=True):
         st.progress(progress_pct)
         st.write(f"ใช้ไปแล้ว **฿{total_spent_this_month:,.2f}** จากงบรวม **฿{budget_limit:,.2f}** ({display_pct:.1f}%)")
@@ -184,7 +189,6 @@ with st.container(border=True):
         amount = st.number_input("จำนวนเงิน (บาท) 💵", min_value=0.0, step=1.0, value=default_amount)
         description = st.text_input("รายละเอียด/หมายเหตุ 📝", value=default_desc, placeholder="เช่น ซื้อของกินเข้าบ้าน")
         user = st.selectbox("ใครเป็นคนจ่ายจ๊ะ? 👤", users_list, index=default_user_index)
-        # 🌟 เพิ่มช่องกรอกบันทึกเพิ่มเติม (Note) รูปแบบ text_input บรรทัดเดียวเหมาะกับมือถือ
         note = st.text_input("โน้ตสั้นจากใจ/บันทึกเพิ่มเติม ✏️", value=default_note, placeholder="เช่น มื้อนี้ Ado เลี้ยงนะจ๊ะ")
         
         submit_button = st.form_submit_button(label=form_label)
@@ -197,7 +201,7 @@ if submit_button:
             st.session_state.expenses.at[row_to_edit, "Amount"] = amount
             st.session_state.expenses.at[row_to_edit, "Description"] = description
             st.session_state.expenses.at[row_to_edit, "User"] = user
-            st.session_state.expenses.at[row_to_edit, "Note"] = note  # อัปเดตคอลัมน์ Note ตอนแก้ไขข้อมูล
+            st.session_state.expenses.at[row_to_edit, "Note"] = str(note)  # มั่นใจว่าเป็นข้อความแน่นอน
             st.success("แก้ไขข้อมูลเรียบร้อยแล้วจ้า! ✨")
         else:
             new_row = pd.DataFrame([{
@@ -206,7 +210,7 @@ if submit_button:
                 "Amount": amount, 
                 "Description": description,
                 "User": user,
-                "Note": note  # บันทึกคอลัมน์ Note ตอนเพิ่มข้อมูลใหม่
+                "Note": str(note)
             }])
             st.session_state.expenses = pd.concat([st.session_state.expenses, new_row], ignore_index=True)
             st.success(f"บันทึกรายจ่ายของ {user} เรียบร้อยแล้วจ้า! 🎈")
@@ -228,6 +232,7 @@ if not st.session_state.expenses.empty:
     df["User"] = df["User"].fillna("Unknown")
     if "Note" not in df.columns:
         df["Note"] = ""
+    df["Note"] = df["Note"].fillna("")
 
     # 🔍 ตัวกรองเลือกดูข้อมูลของแต่ละคน
     st.subheader("🔍 ตัวกรองแดชบอร์ด")
@@ -266,8 +271,9 @@ if not st.session_state.expenses.empty:
                 )
                 st.plotly_chart(fig, use_container_width=True, key=f"pie_{period_name}_{user_filter}")
                 
-                # 📋 อัปเดตตารางให้ดึงคอลัมน์ Note มาร่วมแสดงผลภาษาไทย
+                # แสดงผลตารางที่มีคอลัมน์บันทึกเพิ่มเติม
                 display_df = filtered_dataset[["Date", "Category", "Amount", "Description", "User", "Note"]].copy()
+                display_df["Note"] = display_df["Note"].replace("nan", "") # เปลี่ยนคำว่า nan เป็นค่าว่างให้อ่านง่าย
                 display_df.columns = ["วันที่", "หมวดหมู่", "จำนวนเงิน (บาท)", "รายละเอียด", "คนจ่าย", "บันทึกเพิ่มเติม"]
                 st.dataframe(display_df, use_container_width=True)
 
