@@ -11,7 +11,7 @@ st.set_page_config(
     layout="centered"
 )
 
-st.title("💝 บันทึกอนุทินการเงินของเรา")
+st.title("💝 บันทึกการเงินของเรา")
 
 # 📂 กำหนดชื่อไฟล์สำหรับบันทึกข้อมูล
 CSV_FILE = "expenses.csv"
