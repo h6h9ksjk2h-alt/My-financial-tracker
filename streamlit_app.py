@@ -102,9 +102,8 @@ if submit_button:
     else:
         st.warning("Please enter an amount greater than 0.")
 
-# 📊 Visual Dashboard Section with Mobile-Friendly Tabs
+# 📊 Visual Dashboard Section
 st.markdown("---")
-st.subheader("📊 Financial Summaries")
 
 if not st.session_state.expenses.empty:
     df = st.session_state.expenses.copy()
@@ -116,52 +115,85 @@ if not st.session_state.expenses.empty:
     current_quarter = (today.month - 1) // 3 + 1
     start_of_week = today - timedelta(days=7)
 
+    # 📋 SECTION 1: Current Summaries (Tabs)
+    st.subheader("📊 Current Summaries")
     tab1, tab2, tab3, tab4 = st.tabs(["🗓️ Week", "📊 Month", "📈 Quarter", "💰 Year"])
     
     def render_summary_tab(filtered_df, period_name):
         if filtered_df.empty:
-            st.info(f"No expenses recorded for {period_name}.")
+            st.info(f"No expenses recorded for this {period_name}.")
         else:
-            # Display inside a modern bordered container card
             with st.container(border=True):
                 total = filtered_df["Amount"].sum()
                 st.metric(label=f"Total Spent ({period_name})", value=f"฿{total:.2f}")
                 
-                # Modern Donut Chart with custom color sequence
                 df_chart = filtered_df.groupby("Category", as_index=False)["Amount"].sum()
                 fig = px.pie(
-                    df_chart, 
-                    values="Amount", 
-                    names="Category", 
-                    hole=0.4,  
+                    df_chart, values="Amount", names="Category", hole=0.4,
                     color_discrete_sequence=chart_colors
                 )
                 fig.update_layout(
-                    margin=dict(l=10, r=10, t=10, b=10), 
-                    height=260,
-                    showlegend=True,
+                    margin=dict(l=10, r=10, t=10, b=10), height=240, showlegend=True,
                     legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
                 )
-                # 🛠️ Fixed: Unique key added for each tab's chart
-                st.plotly_chart(fig, use_container_width=True, key=f"chart_{period_name}")
-                
+                st.plotly_chart(fig, use_container_width=True, key=f"pie_{period_name}")
                 st.dataframe(filtered_df[["Date", "Category", "Amount", "Description"]], use_container_width=True)
 
     with tab1:
-        df_week = df[df['Date_Parsed'] >= start_of_week]
-        render_summary_tab(df_week, "week")
-
+        render_summary_tab(df[df['Date_Parsed'] >= start_of_week], "week")
     with tab2:
-        df_month = df[(df['Date_Parsed'].dt.year == current_year) & (df['Date_Parsed'].dt.month == current_month)]
-        render_summary_tab(df_month, "month")
-
+        render_summary_tab(df[(df['Date_Parsed'].dt.year == current_year) & (df['Date_Parsed'].dt.month == current_month)], "month")
     with tab3:
-        df_quarter = df[(df['Date_Parsed'].dt.year == current_year) & (((df['Date_Parsed'].dt.month - 1) // 3 + 1) == current_quarter)]
-        render_summary_tab(df_quarter, "quarter")
-
+        render_summary_tab(df[(df['Date_Parsed'].dt.year == current_year) & (((df['Date_Parsed'].dt.month - 1) // 3 + 1) == current_quarter)], "quarter")
     with tab4:
-        df_year = df[df['Date_Parsed'].dt.year == current_year]
-        render_summary_tab(df_year, "year")
+        render_summary_tab(df[df['Date_Parsed'].dt.year == current_year], "year")
+
+    # 📈 SECTION 2: Trends & Comparisons (Stacked Bar Chart)
+    st.markdown("---")
+    st.subheader("🧱 Spending Trends & Comparisons")
+    
+    with st.container(border=True):
+        # Time interval selector for the bar chart comparison
+        time_view = st.radio(
+            "Compare spending by:",
+            ["Weekly", "Monthly", "Yearly"],
+            horizontal=True
+        )
+        
+        # Add tracking columns for groups
+        df['Year'] = df['Date_Parsed'].dt.strftime('%Y')
+        df['Month'] = df['Date_Parsed'].dt.strftime('%Y-%m')
+        df['Week'] = df['Date_Parsed'].dt.apply(lambda x: (x - timedelta(days=x.weekday())).strftime('%Y-%m-%d'))
+
+        if time_view == "Weekly":
+            group_col = 'Week'
+            lbl = "Starting Week"
+        elif time_view == "Monthly":
+            group_col = 'Month'
+            lbl = "Month"
+        else:
+            group_col = 'Year'
+            lbl = "Year"
+            
+        # Group data for the chart
+        df_trend = df.groupby([group_col, 'Category'], as_index=False)['Amount'].sum()
+        
+        # Build the modern Stacked Bar Chart
+        fig_bar = px.bar(
+            df_trend,
+            x=group_col,
+            y="Amount",
+            color="Category",
+            color_discrete_sequence=chart_colors,
+            labels={group_col: lbl, "Amount": "Total (฿)"}
+        )
+        fig_bar.update_layout(
+            margin=dict(l=10, r=10, t=20, b=10),
+            height=300,
+            barmode='stack',
+            legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5)
+        )
+        st.plotly_chart(fig_bar, use_container_width=True, key="trend_bar_chart")
 
 else:
     st.info("No expenses added yet. Use the form above to start tracking!")
