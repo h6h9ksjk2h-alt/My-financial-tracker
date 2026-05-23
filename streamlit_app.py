@@ -15,7 +15,7 @@ st.title("💝 บันทึกการเงินของเรา")
 
 # 📂 กำหนดชื่อไฟล์สำหรับบันทึกข้อมูล
 CSV_FILE = "expenses.csv"
-BUDGET_FILE = "budget.txt"  # 🆕 กำหนดชื่อไฟล์สำหรับเก็บงบประมาณ[span_1](start_span)[span_1](end_span)
+BUDGET_FILE = "budget.txt"  # 🆕 ไฟล์สำหรับเก็บงบประมาณกินใช้ทั่วไป[span_1](start_span)[span_1](end_span)
 
 # 🗄️ โครงสร้างหน่วยความจำระบบ (session_state) ของข้อมูลค่าใช้จ่าย
 if os.path.exists(CSV_FILE):
@@ -133,14 +133,14 @@ current_month = today.month
 current_quarter = (today.month - 1) // 3 + 1
 start_of_week = today - timedelta(days=7)
 
-# 🎯 ส่วนที่ 1: งบประมาณรายเดือน และการ์ดแยกเงินลงทุนรายบุคคล
+# 🎯 ส่วนที่ 1: งบประมาณรายเดือน และการ์ดแยกเงินลงทุนสะสมรายบุคคล
 st.subheader(f"📊 สรุปงบประจำเดือน {current_month}/{current_year}")
 
 if not st.session_state.expenses.empty:
     df_budget = st.session_state.expenses.copy()
     df_budget['Date_Parsed'] = pd.to_datetime(df_budget['Date'])
     
-    # 🛒 1. คิดงบกินใช้ทั่วไป (ไม่รวมการลงทุน)
+    # 🛒 1. คิดงบกินใช้ทั่วไป (ไม่รวมการลงทุน) ของเดือนปัจจุบัน
     df_this_month = df_budget[
         (df_budget['Date_Parsed'].dt.year == current_year) & 
         (df_budget['Date_Parsed'].dt.month == current_month) & 
@@ -149,17 +149,16 @@ if not st.session_state.expenses.empty:
     total_spent_this_month = df_this_month["Amount"].sum()
     budget_limit = st.session_state.monthly_budget
 
-    # 📈 2. คิดยอดเงินลงทุนรวมของเดือนนี้
-    df_investment_this_month = df_budget[
+    # 📈 2. คิดยอดเงินลงทุนสะสมรวมของ "ปีนี้" (ตามข้อตกลงที่ตัดเงื่อนไขเดือนออกเพื่อดูระยะยาว)
+    df_investment_this_year = df_budget[
         (df_budget['Date_Parsed'].dt.year == current_year) & 
-        (df_budget['Date_Parsed'].dt.month == current_month) & 
         (df_budget['Category'] == "การลงทุน 📈")
     ]
-    total_investment_this_month = df_investment_this_month["Amount"].sum()
+    total_investment_this_year = df_investment_this_year["Amount"].sum()
 
-    # 🐻🐰 3. แยกยอดเงินลงทุนรายบุคคลของเดือนนี้
-    total_ado_invest = df_investment_this_month[df_investment_this_month["User"] == "Ado"]["Amount"].sum()
-    total_paanpopy_invest = df_investment_this_month[df_investment_this_month["User"] == "Paanpopy"]["Amount"].sum()
+    # 🐻🐰 3. แยกยอดเงินลงทุนสะสมรายบุคคลของปีนี้
+    total_ado_invest = df_investment_this_year[df_investment_this_year["User"] == "Ado"]["Amount"].sum()
+    total_paanpopy_invest = df_investment_this_year[df_investment_this_year["User"] == "Paanpopy"]["Amount"].sum()
 
     if budget_limit > 0:
         progress_pct = min(total_spent_this_month / budget_limit, 1.0)
@@ -181,22 +180,22 @@ if not st.session_state.expenses.empty:
         else:
             st.success("🌸 เดือนนี้เราสองคนยังควบคุมงบได้ดีเยี่ยมเลยจ้า เก่งมาก! 🎉")
 
-    # 🌟 แสดงการ์ดเงินลงทุนแยกรายบุคคลในรูปแบบคอลัมน์ย่อย
+    # 🌟 แสดงการ์ดเงินลงทุนแยกรายบุคคลในรูปแบบคอลัมน์ย่อย (อัปเดตเป็นสะสมประจำปี)
     with st.container(border=True):
-        st.write("📈 **เงินลงทุนประจำเดือนนี้**")
+        st.write(f"📈 **เงินลงทุนสะสมประจำปี {current_year}**")
         col_inv1, col_inv2 = st.columns(2)
         with col_inv1:
             st.metric(label="🐻 ของ Ado", value=f"฿{total_ado_invest:,.2f}")
         with col_inv2:
             st.metric(label="🐰 ของ Paanpopy", value=f"฿{total_paanpopy_invest:,.2f}")
-        st.caption(f"💰 ยอดรวมเงินลงทุนทั้งหมดเดือนนี้: **฿{total_investment_this_month:,.2f}**")
+        st.caption(f"💰 ยอดรวมเงินลงทุนสะสมทั้งหมดในปีนี้: **฿{total_investment_this_year:,.2f}**")
 else:
     with st.container(border=True):
         st.write("🛒 **งบประมาณกินใช้ทั่วไป (ไม่รวมการลงทุน)**")
         st.progress(0.0)
         st.write(f"ใช้ไปแล้ว **฿0.00** จากงบรวม **฿{st.session_state.monthly_budget:,.2f}** (0.0%)")
     with st.container(border=True):
-        st.write("📈 **เงินลงทุนประจำเดือนนี้**")
+        st.write(f"📈 **เงินลงทุนสะสมประจำปี {current_year}**")
         col_inv1, col_inv2 = st.columns(2)
         with col_inv1:
             st.metric(label="🐻 ของ Ado", value="฿0.00")
@@ -265,7 +264,7 @@ if submit_button:
     else:
         st.warning("กรุณากรอกจำนวนเงินที่มากกว่า 0 นะจ๊ะ")
 
-# 📊 ส่วนที่ 4: แดชบอร์ดแสดงกราฟและตารางข้อมูล
+# 📊 ส่วนที่ 4: แดชบอร์ดแสดงกราฟและตารางข้อมูล (คงเมนู เปรียบเทียบ สัปดาห์/เดือน/ปี ไว้ตามเดิม)
 st.markdown("---")
 
 if not st.session_state.expenses.empty:
@@ -320,7 +319,7 @@ if not st.session_state.expenses.empty:
                 st.dataframe(display_df, use_container_width=True)
 
     with tab1:
-        render_summary_tab(df_filtered[df_filtered['Date_Parsed'] >= start_of_week], "สัปดาห์นี้")
+        render_summary_tab(df_filtered[df_filtered['Date_Parsed'] >= start_of_week], "สัป週นี้")
     with tab2:
         render_summary_tab(df_filtered[(df_filtered['Date_Parsed'].dt.year == current_year) & (df_filtered['Date_Parsed'].dt.month == current_month)], "เดือนนี้")
     with tab3:
