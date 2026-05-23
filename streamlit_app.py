@@ -23,12 +23,20 @@ if os.path.exists(CSV_FILE):
 else:
     st.session_state.expenses = pd.DataFrame(columns=["Date", "Category", "Amount", "Description", "User"])
 
-# หมวดหมู่ภาษาไทยน่ารักๆ
-categories = ["อาหารและขนม 🍔", "ค่าน้ำมันรถ 🚗", "ช้อปปิ้ง 🛍️", "โรงพยาบาล/ยา 🏥", "ของชำเข้าบ้าน 🛒", "เพื่อลูกรัก 👶"]
+# 🏷️ หมวดหมู่ที่เพิ่ม "การลงทุน 📈" ต่อท้ายเรียบร้อยแล้ว
+categories = [
+    "อาหารและขนม 🍔", 
+    "ค่าน้ำมันรถ 🚗", 
+    "ช้อปปิ้ง 🛍️", 
+    "โรงพยาบาล/ยา 🏥", 
+    "ของชำเข้าบ้าน 🛒", 
+    "เพื่อลูกรัก 👶", 
+    "การลงทุน 📈"
+]
 users_list = ["Ado", "Paanpopy"]
 
-# 🎀 โทนสีพาสเทลสุดน่ารัก
-chart_colors = ["#FFB7B2", "#FFDAC1", "#E2F0CB", "#B5EAD7", "#C7CEEA", "#FFC6FF"]
+# 🎀 โทนสีพาสเทลสุดน่ารัก (เพิ่มสีที่ 7 รองรับหมวดหมู่ใหม่)
+chart_colors = ["#FFB7B2", "#FFDAC1", "#E2F0CB", "#B5EAD7", "#C7CEEA", "#FFC6FF", "#BFFCC6"]
 
 # 🛠️ เมนูด้านข้าง (Sidebar)
 st.sidebar.header("⚙️ ตั้งค่าแอป")
@@ -73,7 +81,7 @@ st.sidebar.subheader("📥 ดาวน์โหลดข้อมูล")
 if not st.session_state.expenses.empty:
     csv_data = st.session_state.expenses.to_csv(index=False).encode('utf-8')
     st.sidebar.download_button(
-        label="📥 ดาวน์โหลดไฟล์ Excel (CSV)",
+        label="📥 Download Expenses CSV",
         data=csv_data,
         file_name="our_expenses.csv",
         mime="text/csv",
@@ -111,7 +119,7 @@ with st.container(border=True):
         date = st.date_input("วันที่ 📅", default_date)
         category = st.selectbox("หมวดหมู่ 🏷️", categories, index=default_cat_index)
         amount = st.number_input("จำนวนเงิน (บาท) 💵", min_value=0.0, step=1.0, value=default_amount)
-        description = st.text_input("รายละเอียด/หมายเหตุ 📝", value=default_desc, placeholder="เช่น มื้อเย็นสุดอร่อย")
+        description = st.text_input("รายละเอียด/หมายเหตุ 📝", value=default_desc, placeholder="เช่น ซื้อกองทุนรวม ออมหุ้น")
         user = st.selectbox("ใครเป็นคนจ่ายจ๊ะ? 👤", users_list, index=default_user_index)
         
         submit_button = st.form_submit_button(label=form_label)
@@ -195,7 +203,6 @@ if not st.session_state.expenses.empty:
                 )
                 st.plotly_chart(fig, use_container_width=True, key=f"pie_{period_name}_{user_filter}")
                 
-                # เปลี่ยนหัวตารางแสดงผลเป็นภาษาไทย
                 display_df = filtered_dataset[["Date", "Category", "Amount", "Description", "User"]].copy()
                 display_df.columns = ["วันที่", "หมวดหมู่", "จำนวนเงิน (บาท)", "รายละเอียด", "คนจ่าย"]
                 st.dataframe(display_df, use_container_width=True)
