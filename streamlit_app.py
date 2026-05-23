@@ -16,12 +16,15 @@ st.title("💝 บันทึกการเงินของเรา")
 # 📂 กำหนดชื่อไฟล์สำหรับบันทึกข้อมูล
 CSV_FILE = "expenses.csv"
 
-# 🗄️ โครงสร้างหน่วยความจำระบบ (session_state)
+# 🗄️ โครงสร้างหน่วยความจำระบบ (session_state) พร้อมรองรับคอลัมน์ Note ท้ายสุด
 if os.path.exists(CSV_FILE):
     st.session_state.expenses = pd.read_csv(CSV_FILE)
     st.session_state.expenses["Amount"] = st.session_state.expenses["Amount"].astype(float)
+    # ตรวจสอบเผื่อกรณีไฟล์เดิมยังไม่มีคอลัมน์ Note
+    if "Note" not in st.session_state.expenses.columns:
+        st.session_state.expenses["Note"] = ""
 else:
-    st.session_state.expenses = pd.DataFrame(columns=["Date", "Category", "Amount", "Description", "User"])
+    st.session_state.expenses = pd.DataFrame(columns=["Date", "Category", "Amount", "Description", "User", "Note"])
 
 # 🧠 ระบบจำค่างบประมาณรายเดือนเริ่มต้น (20,000 บาท)
 if "monthly_budget" not in st.session_state:
@@ -45,7 +48,7 @@ chart_colors = ["#FFB7B2", "#FFDAC1", "#E2F0CB", "#B5EAD7", "#C7CEEA", "#FFC6FF"
 # 🛠️ เมนูด้านข้าง (Sidebar)
 st.sidebar.header("⚙️ ตั้งค่าแอป")
 
-# 💵 ช่องปรับเปลี่ยนงบประมาณประจำเดือนใน Sidebar ตามที่เลือกไว้
+# 💵 ช่องปรับเปลี่ยนงบประมาณประจำเดือนใน Sidebar
 st.session_state.monthly_budget = st.sidebar.number_input(
     "🎯 งบประมาณรวมประจำเดือน (บาท)",
     min_value=0.0,
@@ -61,6 +64,7 @@ default_cat_index = 0
 default_amount = 0.0
 default_desc = ""
 default_user_index = 0
+default_note = ""
 row_to_edit = None
 
 # 🔍 ระบบดึงข้อมูลสำหรับโหมดแก้ไข
@@ -85,6 +89,9 @@ if edit_mode:
         default_desc = str(old_row['Description'])
         if "User" in old_row and old_row['User'] in users_list:
             default_user_index = users_list.index(old_row['User'])
+        if "Note" in old_row:
+            default_note = str(old_row['Note']) if pd.notna(old_row['Note']) else ""
+            
         st.sidebar.info(f"ดึงข้อมูลแถวที่ {row_to_edit} มาแล้ว แก้ไขในฟอร์มหลักได้เลย")
 
 # 📥 ปุ่มดาวน์โหลดข้อมูลใน Sidebar
@@ -101,10 +108,11 @@ if not st.session_state.expenses.empty:
         use_container_width=True
     )
 
-# คำนวณเวลาปัจจุบัน
+# 🕒 คำนวณเวลาปัจจุบันและแก้จุด Error ไตรมาสเรียบร้อยแล้ว
 today = datetime.now()
 current_year = today.year
 current_month = today.month
+current_quarter = (today.month - 1) // 3 + 1
 start_of_week = today - timedelta(days=7)
 
 # 🎯 ส่วนที่ 1: หลอดความคืบหน้างบประมาณรายเดือน (Shared Budget Progress Bar)
@@ -119,7 +127,7 @@ if not st.session_state.expenses.empty:
     total_spent_this_month = df_this_month["Amount"].sum()
     budget_limit = st.session_state.monthly_budget
 
-    # คำนวณเปอร์เซ็นต์ (ไม่ให้เกิน 100% สำหรับแถบความคืบหน้า)
+    # คำนวณเปอร์เซ็นต์ (ใช้ min ป้องกันหลอดพังเกิน 100%)
     if budget_limit > 0:
         progress_pct = min(total_spent_this_month / budget_limit, 1.0)
         display_pct = (total_spent_this_month / budget_limit) * 100
@@ -161,7 +169,7 @@ if not st.session_state.expenses.empty:
         with st.container(border=True):
             st.metric(label="🐰 ยอดรวมของ Paanpopy", value=f"฿{total_paanpopy:,.2f}")
 
-# ➕ ส่วนที่ 3: ฟอร์มกรอกข้อมูลการใช้เงิน
+# ➕ ส่วนที่ 3: ฟอร์มกรอกข้อมูลการใช้เงินพร้อมช่องบันทึกเพิ่มเติม
 with st.container(border=True):
     if edit_mode:
         st.subheader(f"✏️ แก้ไขข้อมูล (แถวที่ {row_to_edit})")
@@ -174,8 +182,10 @@ with st.container(border=True):
         date = st.date_input("วันที่ 📅", default_date)
         category = st.selectbox("หมวดหมู่ 🏷️", categories, index=default_cat_index)
         amount = st.number_input("จำนวนเงิน (บาท) 💵", min_value=0.0, step=1.0, value=default_amount)
-        description = st.text_input("รายละเอียด/หมายเหตุ 📝", value=default_desc, placeholder="เช่น ซื้อกองทุนรวม ออมหุ้น")
+        description = st.text_input("รายละเอียด/หมายเหตุ 📝", value=default_desc, placeholder="เช่น ซื้อของกินเข้าบ้าน")
         user = st.selectbox("ใครเป็นคนจ่ายจ๊ะ? 👤", users_list, index=default_user_index)
+        # 🌟 เพิ่มช่องกรอกบันทึกเพิ่มเติม (Note) รูปแบบ text_input บรรทัดเดียวเหมาะกับมือถือ
+        note = st.text_input("โน้ตสั้นจากใจ/บันทึกเพิ่มเติม ✏️", value=default_note, placeholder="เช่น มื้อนี้ Ado เลี้ยงนะจ๊ะ")
         
         submit_button = st.form_submit_button(label=form_label)
 
@@ -187,6 +197,7 @@ if submit_button:
             st.session_state.expenses.at[row_to_edit, "Amount"] = amount
             st.session_state.expenses.at[row_to_edit, "Description"] = description
             st.session_state.expenses.at[row_to_edit, "User"] = user
+            st.session_state.expenses.at[row_to_edit, "Note"] = note  # อัปเดตคอลัมน์ Note ตอนแก้ไขข้อมูล
             st.success("แก้ไขข้อมูลเรียบร้อยแล้วจ้า! ✨")
         else:
             new_row = pd.DataFrame([{
@@ -194,7 +205,8 @@ if submit_button:
                 "Category": category, 
                 "Amount": amount, 
                 "Description": description,
-                "User": user
+                "User": user,
+                "Note": note  # บันทึกคอลัมน์ Note ตอนเพิ่มข้อมูลใหม่
             }])
             st.session_state.expenses = pd.concat([st.session_state.expenses, new_row], ignore_index=True)
             st.success(f"บันทึกรายจ่ายของ {user} เรียบร้อยแล้วจ้า! 🎈")
@@ -214,6 +226,8 @@ if not st.session_state.expenses.empty:
     if "User" not in df.columns:
         df["User"] = "Unknown"
     df["User"] = df["User"].fillna("Unknown")
+    if "Note" not in df.columns:
+        df["Note"] = ""
 
     # 🔍 ตัวกรองเลือกดูข้อมูลของแต่ละคน
     st.subheader("🔍 ตัวกรองแดชบอร์ด")
@@ -252,8 +266,9 @@ if not st.session_state.expenses.empty:
                 )
                 st.plotly_chart(fig, use_container_width=True, key=f"pie_{period_name}_{user_filter}")
                 
-                display_df = filtered_dataset[["Date", "Category", "Amount", "Description", "User"]].copy()
-                display_df.columns = ["วันที่", "หมวดหมู่", "จำนวนเงิน (บาท)", "รายละเอียด", "คนจ่าย"]
+                # 📋 อัปเดตตารางให้ดึงคอลัมน์ Note มาร่วมแสดงผลภาษาไทย
+                display_df = filtered_dataset[["Date", "Category", "Amount", "Description", "User", "Note"]].copy()
+                display_df.columns = ["วันที่", "หมวดหมู่", "จำนวนเงิน (บาท)", "รายละเอียด", "คนจ่าย", "บันทึกเพิ่มเติม"]
                 st.dataframe(display_df, use_container_width=True)
 
     with tab1:
