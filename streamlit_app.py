@@ -113,14 +113,14 @@ current_month = today.month
 current_quarter = (today.month - 1) // 3 + 1
 start_of_week = today - timedelta(days=7)
 
-# 🎯 ส่วนที่ 1: งบประมาณรายเดือน และการ์ดแยกเงินลงทุน
+# 🎯 ส่วนที่ 1: งบประมาณรายเดือน และการ์ดแยกเงินลงทุนรายบุคคล
 st.subheader(f"📊 สรุปงบประจำเดือน {current_month}/{current_year}")
 
 if not st.session_state.expenses.empty:
     df_budget = st.session_state.expenses.copy()
     df_budget['Date_Parsed'] = pd.to_datetime(df_budget['Date'])
     
-    # 🛒 1. กรองเดือนปัจจุบันแบบ "ไม่รวม" การลงทุน เพื่อคิดงบกินใช้ทั่วไป
+    # 🛒 1. คิดงบกินใช้ทั่วไป (ไม่รวมการลงทุน)
     df_this_month = df_budget[
         (df_budget['Date_Parsed'].dt.year == current_year) & 
         (df_budget['Date_Parsed'].dt.month == current_month) & 
@@ -129,13 +129,17 @@ if not st.session_state.expenses.empty:
     total_spent_this_month = df_this_month["Amount"].sum()
     budget_limit = st.session_state.monthly_budget
 
-    # 📈 2. กรองเดือนปัจจุบันแบบ "เลือกเฉพาะ" การลงทุน
+    # 📈 2. คิดยอดเงินลงทุนรวมของเดือนนี้
     df_investment_this_month = df_budget[
         (df_budget['Date_Parsed'].dt.year == current_year) & 
         (df_budget['Date_Parsed'].dt.month == current_month) & 
         (df_budget['Category'] == "การลงทุน 📈")
     ]
     total_investment_this_month = df_investment_this_month["Amount"].sum()
+
+    # 🐻🐰 3. แยกยอดเงินลงทุนรายบุคคลของเดือนนี้
+    total_ado_invest = df_investment_this_month[df_investment_this_month["User"] == "Ado"]["Amount"].sum()
+    total_paanpopy_invest = df_investment_this_month[df_investment_this_month["User"] == "Paanpopy"]["Amount"].sum()
 
     if budget_limit > 0:
         progress_pct = min(total_spent_this_month / budget_limit, 1.0)
@@ -157,18 +161,29 @@ if not st.session_state.expenses.empty:
         else:
             st.success("🌸 เดือนนี้เราสองคนยังควบคุมงบได้ดีเยี่ยมเลยจ้า เก่งมาก! 🎉")
 
-    # 🌟 แสดงการ์ดเงินลงทุนแยกออกมาด้านล่างหลอดงบประมาณ
+    # 🌟 แสดงการ์ดเงินลงทุนแยกรายบุคคลในรูปแบบคอลัมน์ย่อย
     with st.container(border=True):
-        st.metric(label="📈 ยอดเงินลงทุนสะสมเดือนนี้", value=f"฿{total_investment_this_month:,.2f}")
+        st.write("📈 **เงินลงทุนประจำเดือนนี้**")
+        col_inv1, col_inv2 = st.columns(2)
+        with col_inv1:
+            st.metric(label="🐻 ของ Ado", value=f"฿{total_ado_invest:,.2f}")
+        with col_inv2:
+            st.metric(label="🐰 ของ Paanpopy", value=f"฿{total_paanpopy_invest:,.2f}")
+        st.caption(f"💰 ยอดรวมเงินลงทุนทั้งหมดเดือนนี้: **฿{total_investment_this_month:,.2f}**")
 else:
     with st.container(border=True):
         st.write("🛒 **งบประมาณกินใช้ทั่วไป (ไม่รวมการลงทุน)**")
         st.progress(0.0)
         st.write(f"ใช้ไปแล้ว **฿0.00** จากงบรวม **฿{st.session_state.monthly_budget:,.2f}** (0.0%)")
     with st.container(border=True):
-        st.metric(label="📈 ยอดเงินลงทุนสะสมเดือนนี้", value="฿0.00")
+        st.write("📈 **เงินลงทุนประจำเดือนนี้**")
+        col_inv1, col_inv2 = st.columns(2)
+        with col_inv1:
+            st.metric(label="🐻 ของ Ado", value="฿0.00")
+        with col_inv2:
+            st.metric(label="🐰 ของ Paanpopy", value="฿0.00")
 
-# 🐻🐰 ส่วนที่ 2: การ์ดสรุปยอดเงินรวมทั้งหมดของทั้งคู่
+# 🐻🐰 ส่วนที่ 2: การ์ดสรุปยอดเงินรวมทั้งหมดของทั้งคู่ (ยอดสะสมทุกหมวดตั้งแต่แรก)
 if not st.session_state.expenses.empty:
     df_stats = st.session_state.expenses.copy()
     total_ado = df_stats[df_stats["User"] == "Ado"]["Amount"].sum()
@@ -333,7 +348,7 @@ if not st.session_state.expenses.empty:
                 margin=dict(l=10, r=10, t=20, b=10),
                 height=300,
                 barmode='stack',
-                legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5)
+                legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center shadow", x=0.5)
             )
             st.plotly_chart(fig_bar, use_container_width=True, key=f"trend_bar_{user_filter}")
     else:
