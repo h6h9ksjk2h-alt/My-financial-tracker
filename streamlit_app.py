@@ -14,7 +14,6 @@ st.set_page_config(
 # 🎀 ตกแต่งความโค้งมนสไตล์ Kawaii โดยใช้ตัวแปรระบบเพื่อให้รองรับทั้ง Light และ Dark Mode อัตโนมัติ
 st.markdown("""
     <style>
-    /* ใช้ตัวแปรระบบ เพื่อให้สีขอบและสีปุ่มปรับตามโหมดมืด/สว่างอัตโนมัติ */
     div.stButton > button:first-child {
         border-radius: 20px;
         border: 1px solid var(--primary-color, #FFB7B2);
@@ -95,15 +94,15 @@ categories = [
 ]
 users_list = ["Ado", "Paanpopy"]
 
-# 🎨 ปรับเฉดสีกลุ่ม Medium-Pastel เพื่อให้โดดเด่นคมชัดทั้งบนพื้นหลังสีขาวและสีดำ
+# 🎨 ชุดสีพาสเทลกลุ่ม Medium-Pastel เพื่อความคมชัดในทุกโหมดแสง
 chart_colors = [
-    "#FF9E9E", # อาหารและขนม 🍔 (ชมพูซากุระเข้มขึ้นนิดนึง)
-    "#5C9EAD", # ค่าน้ำมันรถ 🚗 (ฟ้าพาสเทลหม่นเข้ม)
-    "#B39DDB", # ช้อปปิ้ง 🛍️ (ม่วงพาสเทลเด่น)
-    "#FF7043", # โรงพยาบาล/ยา 🏥 (ส้มแดงพาสเทล)
-    "#FFCC80", # ของชำเข้าบ้าน 🛒 (ครีมส้มพาสเทล)
-    "#FFF59D", # เพื่อลูกรัก 👶 (เหลืองพาสเทลสว่าง)
-    "#81C784"  # การออมเงิน 💰 (เขียวมัทฉะพาสเทลที่คมชัดในที่มืด)
+    "#FF9E9E", # อาหารและขนม 🍔
+    "#5C9EAD", # ค่าน้ำมันรถ 🚗
+    "#B39DDB", # ช้อปปิ้ง 🛍️
+    "#FF7043", # โรงพยาบาล/ยา 🏥
+    "#FFCC80", # ของชำเข้าบ้าน 🛒
+    "#FFF59D", # เพื่อลูกรัก 👶
+    "#81C784"  # การออมเงิน 💰 (เขียวมัทฉะ)
 ]
 
 category_color_map = dict(zip(categories, chart_colors))
@@ -234,7 +233,7 @@ with st.container(border=True):
             st.write(f"สะสมแล้ว **฿{total_savings:,.2f}** จากเป้าหมาย **฿{g_target:,.2f}** ({progress_pct:.1f}%)")
             st.progress(progress_ratio)
 
-# 🐻🐰 ส่วนที่ 2: การ์ดสรุปยอดเงินสะสมทั้งหมดของทั้งคู่
+# 🐻🐰 ส่วนที่ 2: การ์ดสรุปยอดเงินสะสมทั้งหมดของทั้งคู่ (คิดเฉพาะหมวดการออมเงินเท่านั้น)
 if not st.session_state.expenses.empty:
     df_stats = st.session_state.expenses.copy()
     df_ado_savings = df_stats[(df_stats["User"] == "Ado") & (df_stats["Category"] == "การออมเงิน 💰")]
@@ -321,13 +320,18 @@ if not st.session_state.expenses.empty:
                     df_chart, values="Amount", names="Category", hole=0.4,
                     color="Category", color_discrete_map=category_color_map
                 )
-                # 🟢 แก้ไข: ใช้ template="none" เพื่อให้สีฟอนต์ปรับเป็น ขาว/ดำ ตามธีมของระบบโดยอัตโนมัติ
+                # 🟢 อัปเดต: ล้างสีพื้นหลังและผูกตัวอักษรให้เปลี่ยนสีอัตโนมัติทั้ง Light/Dark Mode
                 fig.update_layout(
                     template="none",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    font=dict(color="var(--text-color)"),
                     margin=dict(l=10, r=10, t=10, b=10), height=240,
-                    legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
+                    legend=dict(
+                        orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5,
+                        font=dict(color="var(--text-color)")
+                    )
                 )
-                # 🟢 แก้ไข: เพิ่มพารามิเตอร์ key เพื่อป้องกันไม่ให้เกิดปัญหา Duplicate Element ID
                 st.plotly_chart(fig, use_container_width=True, key=f"pie_chart_{period_name}")
 
     with tab1: render_summary_tab(df_filtered[df_filtered['Date_Parsed'] >= start_of_week], "สัปดาห์นี้")
@@ -355,12 +359,18 @@ if not st.session_state.expenses.empty:
             color_discrete_map=category_color_map, orientation="h",
             labels={group_col: time_view, "Amount": "ยอดรวม (บาท)"}
         )
-        # 🟢 แก้ไข: ใช้ template="none" เพื่อให้แกนและตัวอักษรกราฟแท่งแนวนอนปรับตาม Light/Dark Mode อัตโนมัติ
+        # 🟢 อัปเดต: ล้างสีพื้นหลังและผูกตัวอักษรของแกนกราฟแท่งให้สลับสี ขาว/ดำ อัตโนมัติเช่นกันครับ
         fig_bar.update_layout(
             template="none",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="var(--text-color)"),
             margin=dict(l=80, r=10, t=20, b=10), height=350, barmode='stack',
             yaxis={'categoryorder': 'array', 'categoryarray': df_trend[group_col].unique()},
-            legend=dict(orientation="h", yanchor="bottom", y=-0.4, xanchor="center", x=0.5)
+            legend=dict(
+                orientation="h", yanchor="bottom", y=-0.4, xanchor="center", x=0.5,
+                font=dict(color="var(--text-color)")
+            )
         )
         st.plotly_chart(fig_bar, use_container_width=True, key="trend_bar_chart_final")
 else:
