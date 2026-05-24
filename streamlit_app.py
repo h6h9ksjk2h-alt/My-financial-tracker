@@ -35,7 +35,7 @@ st.markdown("""
         background-color: #FFFFFF;
     }
     </style>
-""", unsafe_index=True)
+""", unsafe_allow_html=True)
 
 st.title("🌸 บันทึกการเงินของเรา (Yatta! 🎉)")
 
@@ -99,7 +99,7 @@ categories = [
 ]
 users_list = ["Ado", "Paanpopy"]
 
-# 🎨 อัปเดต: ชุดสีพาสเทล Kawaii ละมุนใจตามที่ตกลงกันไว้จ้า
+# 🎨 ชุดสีพาสเทล Kawaii ละมุนใจตามที่ตกลงกันไว้จ้า
 chart_colors = [
     "#FFB7B2", # อาหารและขนม 🍔 (ชมพูซากุระ)
     "#A8DADC", # ค่าน้ำมันรถ 🚗 (ฟ้าพาสเทล)
