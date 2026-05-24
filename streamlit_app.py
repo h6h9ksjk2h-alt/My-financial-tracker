@@ -4,35 +4,31 @@ import plotly.express as px
 from datetime import datetime, timedelta
 import os
 
-# 📱 ตั้งค่าหน้าตาแอปให้เหมาะกับมือถือและปรับธีมให้มีความละมุน
+# 📱 ตั้งค่าหน้าตาแอปให้เหมาะกับมือถือแนวตั้ง
 st.set_page_config(
     page_title="บันทึกรายรับ-รายจ่ายของเรา",
     page_icon="🌸",
     layout="centered"
 )
 
-# 🎀 ตกแต่งหน้าตาแอปให้มีความโค้งมนนุ่มนวล (Rounded Corners) สไตล์ Kawaii ด้วย CSS
+# 🎀 ตกแต่งความโค้งมนสไตล์ Kawaii โดยใช้ตัวแปรระบบเพื่อให้รองรับทั้ง Light และ Dark Mode อัตโนมัติ
 st.markdown("""
     <style>
-    .stApp {
-        background-color: #FFFDF6;
-    }
+    /* ใช้ตัวแปรระบบ เพื่อให้สีขอบและสีปุ่มปรับตามโหมดมืด/สว่างอัตโนมัติ */
     div.stButton > button:first-child {
         border-radius: 20px;
-        border: 1px solid #FFB7B2;
-        background-color: #FFB7B2;
+        border: 1px solid var(--primary-color, #FFB7B2);
+        background-color: var(--primary-color, #FFB7B2);
         color: white;
     }
     div[data-testid="stMetric"] {
-        background-color: #FFFFFF;
         border-radius: 15px;
         padding: 10px;
-        border: 1px solid #FFE5B4;
+        border: 1px solid var(--decorations-color, #FFE5B4);
     }
     div[data-testid="stForm"] {
         border-radius: 20px;
-        border: 1px solid #FFE5B4;
-        background-color: #FFFFFF;
+        border: 1px solid var(--decorations-color, #FFE5B4);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -99,15 +95,15 @@ categories = [
 ]
 users_list = ["Ado", "Paanpopy"]
 
-# 🎨 ชุดสีพาสเทล Kawaii ละมุนใจตามที่ตกลงกันไว้จ้า
+# 🎨 ปรับเฉดสีกลุ่ม Medium-Pastel เพื่อให้โดดเด่นคมชัดทั้งบนพื้นหลังสีขาวและสีดำ
 chart_colors = [
-    "#FFB7B2", # อาหารและขนม 🍔 (ชมพูซากุระ)
-    "#A8DADC", # ค่าน้ำมันรถ 🚗 (ฟ้าพาสเทล)
-    "#E1BEE7", # ช้อปปิ้ง 🛍️ (ม่วงลาเวนเดอร์)
-    "#FF8B94", # โรงพยาบาล/ยา 🏥 (แดงปะการังอ่อน)
-    "#FFE5B4", # ของชำเข้าบ้าน 🛒 (ครีมมิลค์กี้)
-    "#FFF9A6", # เพื่อลูกรัก 👶 (เหลืองพาสเทล)
-    "#C8E6C9"  # การออมเงิน 💰 (เขียวมัทฉะเหนี่ยวทรัพย์)
+    "#FF9E9E", # อาหารและขนม 🍔 (ชมพูซากุระเข้มขึ้นนิดนึง)
+    "#5C9EAD", # ค่าน้ำมันรถ 🚗 (ฟ้าพาสเทลหม่นเข้ม)
+    "#B39DDB", # ช้อปปิ้ง 🛍️ (ม่วงพาสเทลเด่น)
+    "#FF7043", # โรงพยาบาล/ยา 🏥 (ส้มแดงพาสเทล)
+    "#FFCC80", # ของชำเข้าบ้าน 🛒 (ครีมส้มพาสเทล)
+    "#FFF59D", # เพื่อลูกรัก 👶 (เหลืองพาสเทลสว่าง)
+    "#81C784"  # การออมเงิน 💰 (เขียวมัทฉะพาสเทลที่คมชัดในที่มืด)
 ]
 
 category_color_map = dict(zip(categories, chart_colors))
@@ -209,7 +205,7 @@ else:
         st.progress(0.0)
         st.write(f"ใช้ไปแล้ว **฿0.00** จากงบรวม **฿{st.session_state.monthly_budget:,.2f}** (0.0%)")
 
-# 📊 ส่วนแสดงผลหลอดความคืบหน้าเป้าหมายออมเงิน (Matcha Green Style)
+# 📊 ส่วนแสดงผลหลอดความคืบหน้าเป้าหมายออมเงิน
 with st.container(border=True):
     st.write("🍵 **ความคืบหน้าเป้าหมายเงินออมของเราประจำปี**")
     if not st.session_state.goals.empty:
@@ -238,7 +234,7 @@ with st.container(border=True):
             st.write(f"สะสมแล้ว **฿{total_savings:,.2f}** จากเป้าหมาย **฿{g_target:,.2f}** ({progress_pct:.1f}%)")
             st.progress(progress_ratio)
 
-# 🐻🐰 ส่วนที่ 2: การ์ดสรุปยอดเงินสะสมทั้งหมดของทั้งคู่ (คิดเฉพาะหมวดการออมเงินเท่านั้น)
+# 🐻🐰 ส่วนที่ 2: การ์ดสรุปยอดเงินสะสมทั้งหมดของทั้งคู่
 if not st.session_state.expenses.empty:
     df_stats = st.session_state.expenses.copy()
     df_ado_savings = df_stats[(df_stats["User"] == "Ado") & (df_stats["Category"] == "การออมเงิน 💰")]
@@ -325,18 +321,21 @@ if not st.session_state.expenses.empty:
                     df_chart, values="Amount", names="Category", hole=0.4,
                     color="Category", color_discrete_map=category_color_map
                 )
+                # 🟢 แก้ไข: ใช้ template="none" เพื่อให้สีฟอนต์ปรับเป็น ขาว/ดำ ตามธีมของระบบโดยอัตโนมัติ
                 fig.update_layout(
+                    template="none",
                     margin=dict(l=10, r=10, t=10, b=10), height=240,
                     legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                # 🟢 แก้ไข: เพิ่มพารามิเตอร์ key เพื่อป้องกันไม่ให้เกิดปัญหา Duplicate Element ID
+                st.plotly_chart(fig, use_container_width=True, key=f"pie_chart_{period_name}")
 
     with tab1: render_summary_tab(df_filtered[df_filtered['Date_Parsed'] >= start_of_week], "สัปดาห์นี้")
     with tab2: render_summary_tab(df_filtered[(df_filtered['Date_Parsed'].dt.year == current_year) & (df_filtered['Date_Parsed'].dt.month == current_month)], "เดือนนี้")
     with tab3: render_summary_tab(df_filtered[(df_filtered['Date_Parsed'].dt.year == current_year) & (((df_filtered['Date_Parsed'].dt.month - 1) // 3 + 1) == current_quarter)], "ไตรมาสนี้")
     with tab4: render_summary_tab(df_filtered[df_filtered['Date_Parsed'].dt.year == current_year], "ปีนี้")
 
-    # 📊 กราฟแท่งแนวนอนสไตล์เรียงลำดับเวลาปัจจุบันขึ้นก่อน และใช้สีพาสเทล Kawaii ตรงหมวดหมู่
+    # 📊 กราฟแท่งแนวนอนสไตล์เรียงลำดับเวลาปัจจุบันขึ้นก่อน
     st.markdown("---")
     st.subheader("🧱 กราฟเปรียบเทียบแนวโน้มการใช้เงิน")
     
@@ -356,9 +355,13 @@ if not st.session_state.expenses.empty:
             color_discrete_map=category_color_map, orientation="h",
             labels={group_col: time_view, "Amount": "ยอดรวม (บาท)"}
         )
+        # 🟢 แก้ไข: ใช้ template="none" เพื่อให้แกนและตัวอักษรกราฟแท่งแนวนอนปรับตาม Light/Dark Mode อัตโนมัติ
         fig_bar.update_layout(
+            template="none",
             margin=dict(l=80, r=10, t=20, b=10), height=350, barmode='stack',
             yaxis={'categoryorder': 'array', 'categoryarray': df_trend[group_col].unique()},
             legend=dict(orientation="h", yanchor="bottom", y=-0.4, xanchor="center", x=0.5)
         )
-        st.plotly_chart(fig_bar, use_container_width=True)
+        st.plotly_chart(fig_bar, use_container_width=True, key="trend_bar_chart_final")
+else:
+    st.info("ยังไม่มีข้อมูลค่าใช้จ่ายเลย เริ่มบันทึกความทรงจำการเงินของเราสองคนด้านบนได้เลยจ้า! 💖")
